@@ -1,0 +1,18 @@
+dependencies:
+  MPU6050_Driver:
+    component_hash: 73db3f1cf391ea3343d81a831a460f94e39b5bbb465cfc8e81a0140a20566b77
+    dependencies: []
+    source:
+      git: https://github.com/MohanPushadapu/MPU6050_Driver
+      path: .
+      type: git
+    version: 40333ef3fd631c3de012b6447aa96cb5631df7de
+  idf:
+    source:
+      type: idf
+    version: 6.0.2
+direct_dependencies:
+- MPU6050_Driver
+manifest_hash: a523ebd645e8980ff85a8cadea50407821782c41fa5e54c4e193fd7abf1a9305
+target: esp32s3
+version: 3.0.0

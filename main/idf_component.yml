@@ -1,0 +1,3 @@
+dependencies:
+  MPU6050_Driver:
+    git: https://github.com/MohanPushadapu/MPU6050_Driver
