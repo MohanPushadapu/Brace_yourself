@@ -105,11 +105,10 @@ float normalizeAngle(float angle)
     return angle;
 }
 
-void updateRepCounter(float jointAngle, float homeAngle)
+void updateRepCounter(float movement)
 {
     // Angle relative to the starting/home position
 
-    float movement = (jointAngle - homeAngle);
 
     if (repState == WAIT_FOR_TARGET)
     {
@@ -210,7 +209,11 @@ extern "C" void app_main(void)
     MPU6050 ref(bus1, 0x69);
     MPU6050 link2(bus2);
 
+    // uint8_t id = 0;
+    // ref.getDeviceId(id);
+
     ESP_LOGI(TAG, "IMU bus1 ready");
+    // ESP_LOGI(TAG, "ref ID: %d",id);
 
     Error err = link1.begin();
 
@@ -220,44 +223,54 @@ extern "C" void app_main(void)
         return; // Stops app_main; the device remains idle.
     }
 
+    err = ref.begin();
+
+    if (err != Error::OK)
+    {
+        ESP_LOGE(TAG, "Ref init failed");
+        return; // Stops app_main; the device remains idle.
+    }
+
+    err = link2.begin();
+
+    if (err != Error::OK)
+    {
+        ESP_LOGE(TAG, "Link 2 init failed");
+        return; // Stops app_main; the device remains idle.
+    }
+
     ESP_LOGI(TAG, "MPU6050 init success");
 
     // Capture the initial relative angle as the zero position.
     Vector3f accel1, accel2;
 
-    readAccelerometers(link1, ref, accel1, accel2);
+    // Calibration
+    readAccelerometers(link1, link2, accel1, accel2);
 
-    updateLowPassFilters(accel1.x, accel1.y, accel1.z, accel2.x, accel2.y, accel2.z);
+    updateLowPassFilters(
+        accel1.x, accel1.y, accel1.z,
+        accel2.x, accel2.y, accel2.z);
 
-    float angleLink1 = linkAngleDeg(ax1Filt, az1Filt);
-    float angleLink2 = linkAngleDeg(ax2Filt, az2Filt);
-
-    float zeroOffset = angleLink2 - angleLink1;
-    time.delayMs(1000);
-    angleLink1 = linkAngleDeg(accel1.x, accel1.z);
-    angleLink2 = linkAngleDeg(accel2.x, accel2.z);
-    float homeAngle = angleLink2 - angleLink1 - zeroOffset;
-    ESP_LOGI(TAG, "Home Angle: %.2f", homeAngle);
+    float homeAngle =
+        linkAngleDeg(ax2Filt, az2Filt) -
+        linkAngleDeg(ax1Filt, az1Filt);
 
     while (true)
     {
         readAccelerometers(link1, link2, accel1, accel2);
 
-        updateLowPassFilters(accel1.x, accel1.y, accel1.z, accel2.x, accel2.y, accel2.z);
+        updateLowPassFilters(
+            accel1.x, accel1.y, accel1.z,
+            accel2.x, accel2.y, accel2.z);
 
-        angleLink1 = linkAngleDeg(ax1Filt, az1Filt);
-        angleLink2 = linkAngleDeg(ax2Filt, az2Filt);
-        float jointAngle = angleLink2 - angleLink1 - zeroOffset;
+        float currentAngle =
+            linkAngleDeg(ax2Filt, az2Filt) -
+            linkAngleDeg(ax1Filt, az1Filt);
 
-        jointAngle = normalizeAngle(jointAngle);
-        updateRepCounter(jointAngle, homeAngle);
-        // ESP_LOGI("Joint Angle test", "Joint Angle: %.2f", jointAngle);
+        float movement = normalizeAngle(currentAngle - homeAngle);
 
-        // time.delayMs(100);
+        updateRepCounter(movement);
 
-        // printValues(link1,"Link 1");
-        // printValues(ref,"Ref Link");
-        // printValues(link2,"Link 2");1
-        // printRawValues(link1);
+        time.delayMs(20);
     }
 }
